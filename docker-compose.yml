@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  untis-ics:
+    build: .
+    container_name: untis-ics
+    env_file: .env
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    # Uncomment if your Pi needs an explicit platform (e.g., 64-bit OS on Pi 4)
+    # platform: linux/arm64
