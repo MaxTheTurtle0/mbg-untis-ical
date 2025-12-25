@@ -217,13 +217,15 @@ def calendar(
         teacher_ids = {item.get("id") for item in te_entries if isinstance(item, dict)}
         teacher_cancelled = 0 in teacher_ids
 
-        # Visual differentiation for cancelled lessons
-        if period_is_cancelled(period) or teacher_cancelled:
-            event.add("status", "CANCELLED")
+        is_cancelled = period_is_cancelled(period) or teacher_cancelled
+
+        # Visual differentiation; keep STATUS confirmed so Google doesn't drop it from the feed
+        event.add("status", "CONFIRMED")
+        if is_cancelled:
             event.add("categories", ["Cancelled"])
             event.add("X-GOOGLE-CALENDAR-COLOR", "#9e9e9e")  # grey
+            event["summary"] = f"[Cancelled] {event['summary']}"
         else:
-            event.add("status", "CONFIRMED")
             event.add("categories", ["Lesson"])
             event.add("X-GOOGLE-CALENDAR-COLOR", "#1976d2")  # blue
 
