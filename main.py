@@ -89,6 +89,7 @@ def cached_timezone():
 @app.get("/calendar.ics")
 def calendar(
     weeks: int = Query(3, ge=1, description="How many weeks to include starting this week"),
+    past_weeks: int = Query(0, ge=0, description="How many full weeks before this week to include"),
     start: date | None = Query(None, description="Override start date (YYYY-MM-DD)"),
     end: date | None = Query(None, description="Override end date (YYYY-MM-DD)"),
     klasse: str | None = Query(None, description="If set, fetch timetable for class name instead of logged-in user"),
@@ -98,8 +99,9 @@ def calendar(
     Export the logged-in user's timetable as an ICS feed.
 
     Args:
-        weeks: number of weeks to include starting from the current week (default 3).
-        start/end: explicit date range overrides.
+        weeks: number of weeks to include from the current week into the future (default 3).
+        past_weeks: number of full weeks to include before the current week (default 0).
+        start/end: explicit date range overrides (bypass weeks/past_weeks).
         klasse: class name (exact match from Untis) if you want class timetable instead of my_timetable.
         token: optional access token; required when ACCESS_TOKEN env is set.
     """
@@ -108,8 +110,9 @@ def calendar(
             raise HTTPException(status_code=401, detail="Invalid or missing token")
     if not start or not end:
         today = date.today()
-        start = today - timedelta(days=today.weekday())  # Monday of this week
-        end = start + timedelta(days=7 * weeks)
+        this_monday = today - timedelta(days=today.weekday())  # Monday of this week
+        start = this_monday - timedelta(days=7 * past_weeks)
+        end = this_monday + timedelta(days=7 * weeks)
 
     try:
         with make_session() as session:
@@ -231,12 +234,7 @@ def calendar(
 
         cal.add_component(event)
 
-    if not periods:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No periods returned between {start} and {end}. Check credentials, rights, klasse, or date range.",
-        )
-
+    # Google Calendar treats a 404 as an unreachable feed; return an empty calendar instead.
     return Response(content=cal.to_ical(), media_type="text/calendar")
 
 
